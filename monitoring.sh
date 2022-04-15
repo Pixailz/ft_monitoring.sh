@@ -18,11 +18,13 @@ mem_total=$((${mem_total} / 1024))
 mem_pourcentage=$(calc "${mem_used} * 100 / ${mem_total}")
 mem="${mem_used}/${mem_total}MB (${mem_pourcentage}%)"
 
-current_disk=$(lsblk | sed -nE 's|.*(sd[a-z][0-9]).*/$|\1|p') # TO VERIFY
-disk_used=$(df /dev/${current_disk} | sed -nE 's|(^.*[GT]).*|\1|p')
-disk_total=$(lsblk | sed -nE "s|^${current_disk}.* ([0-9]{1,3})[GT]*|\1|p")
+current_disk=$(lsblk | sed -nE 's|.*(sd[a-z][0-9]).*/$|\1|p')
+disk_used=$(df --total -h --output=source,used | sed -nE 's|total\s*(.*)[GTM]|\1|p')
+disk_total=$(df --total -h --output=source,size | sed -nE 's|total\s*(.*)[GTM]|\1|p')
+disk_suffix=$(df --total -h --output=source,size | sed -nE 's|total\s*.*([GTM])|\1|p')
+
 disk_pourcentage=$(calc "${disk_used} * 100 / ${disk_total}")
-disk="${disk_used}/${disk_total}Gb (${disk_pourcentage}%)"
+disk="${disk_used}/${disk_total}${disk_suffix} (${disk_pourcentage}%)"
 
 cpu_free=$(cat /proc/stat | grep 'cpu[0-9]' | awk '{print ($5*100)/($2+$3+$4+$5+$6+$7+$8+$9+$10)}')
 cpu_free=$(calc "100-${cpu_free}")
@@ -41,21 +43,21 @@ net_ip=$(ip a s | sed -nE 's|inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3
 net_mac=$(ip a s | sed -nE 's|link/ether ([a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}:[a-fA-F0-9]{2}).*|\1|p')
 net="IP ${net_ip} (${net_mac// /})"
 
-sudo_count=$(grep --binary-files=text 'sudo ' /var/log/auth.log | wc -l)
-sudo="${sudo_count}"
+sudo_count=$(grep --binary-files=text -w 'COMMAND' /var/log/sudo/sudo.log | grep -v "USER=root" | wc -l)
 
-echo		'#Architecture:'$'\t'${arch}	\
+tabs 20
+wall		'#Architecture:'$'\t'${arch}	\
 	   $'\n''#CPU physical:'$'\t'${proc_p}	\
-	   $'\n''#vCPU:'$'\t\t'${proc_v}		\
+	   $'\n''#vCPU:'$'\t'${proc_v}		\
 	   $'\n''#Memory usage:'$'\t'${mem}		\
 	   $'\n''#Disk Usage:'$'\t'${disk}		\
 	   $'\n''#CPU Load:'$'\t'${cpu}			\
 	   $'\n''#Last boot:'$'\t'${last_boot}	\
-	   $'\n''#LVM use:'$'\t\t'${lvm}		\
+	   $'\n''#LVM use:'$'\t'${lvm}		\
 	   $'\n''#Connection TCP:'$'\t'${tcp}	\
 	   $'\n''#User log:'$'\t'${logged}		\
-	   $'\n''#Network:'$'\t\t'${net}		\
-	   $'\n''#Sudo:'$'\t\t'${sudo}
+	   $'\n''#Network:'$'\t'${net}		\
+	   $'\n''#Sudo:'$'\t'${sudo_count}
 
 # echo		'#Architecture: '${arch}		\
 #	   $'\n''#CPU physical: '${proc_p}	\
